@@ -1,5 +1,6 @@
 # WebGoat 8: A deliberately insecure Web Application
 
+
 [![Pull request build](https://github.com/WebGoat/WebGoat/actions/workflows/pr_build.yml/badge.svg?branch=develop)](https://github.com/WebGoat/WebGoat/actions/workflows/pr_build.yml)
 [![java-jdk](https://img.shields.io/badge/java%20jdk-17-green.svg)](https://jdk.java.net/)
 [![OWASP Labs](https://img.shields.io/badge/OWASP-Lab%20project-f7b73c.svg)](https://owasp.org/projects/)
@@ -8,6 +9,7 @@
 [![Discussions](https://img.shields.io/github/discussions/WebGoat/WebGoat)](https://github.com/WebGoat/WebGoat/discussions)
 
 # Introduction
+
 
 WebGoat is a deliberately insecure web application maintained by [OWASP](http://www.owasp.org/) designed to teach web
 application security lessons.
@@ -24,6 +26,7 @@ you are very likely to get caught. If you are caught engaging in unauthorized ha
 Claiming that you were doing security research will not work as that is the first thing that all hackers claim.*
 
 # Installation instructions:
+
 
 For more details check [the Contribution guide](/CONTRIBUTING.md)
 
@@ -65,6 +68,7 @@ WebWolf will be located at: http://localhost:9090/WebWolf (change ports if neces
 ## 3. Run from the sources
 
 ### Prerequisites:
+
 
 * Java 17
 * Your favorite IDE
