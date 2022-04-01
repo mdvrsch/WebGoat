@@ -20,110 +20,107 @@
  * Source for this application is maintained at https://github.com/WebGoat/WebGoat, a repository for free software projects.
  */
 
-package org.owasp.webgoat.xxe;
+package org.owasp.webwolf;
 
-import com.beust.jcommander.internal.Lists;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
-import org.owasp.webgoat.session.WebSession;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Scope;
-import org.springframework.stereotype.Component;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
+import org.owasp.webwolf.user.WebGoatUser;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.view.RedirectView;
 
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
+import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
+import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
+import static org.springframework.http.MediaType.ALL_VALUE;
 
 /**
- * @author nbaars
- * @since 5/3/17.
+ * Controller for uploading a file
  */
-@Component
-@Scope("singleton")
-public class Comments {
+@Controller
+@Slf4j
+public class FileServer {
 
-    @Autowired
-    protected WebSession webSession;
+    @Value("${webwolf.fileserver.location}")
+    private String fileLocation;
+    @Value("${server.address}")
+    private String server;
+    @Value("${server.port}")
+    private int port;
 
-    protected static DateTimeFormatter fmt = DateTimeFormat.forPattern("yyyy-MM-dd, HH:mm:ss");
-
-    private static final Map<String, List<Comment>> userComments = new HashMap<>();
-    private static final List<Comment> comments = new ArrayList<>();
-
-    static {
-        comments.add(new Comment("webgoat", DateTime.now().toString(fmt), "Silly cat...."));
-        comments.add(new Comment("guest", DateTime.now().toString(fmt), "I think I will use this picture in one of my projects."));
-        comments.add(new Comment("guest", DateTime.now().toString(fmt), "Lol!! :-)."));
+    @RequestMapping(path = "/tmpdir", consumes = ALL_VALUE, produces = MediaType.TEXT_PLAIN_VALUE)
+    @ResponseBody
+    public String getFileLocation() {
+        return fileLocation;
     }
 
-    protected Collection<Comment> getComments() {
-        Collection<Comment> allComments = Lists.newArrayList();
-        Collection<Comment> xmlComments = userComments.get(webSession.getUserName());
-        if (xmlComments != null) {
-            allComments.addAll(xmlComments);
-        }
-        allComments.addAll(comments);
-        return allComments.stream().sorted(Comparator.comparing(Comment::getDateTime).reversed()).collect(Collectors.toList());
-    }
+    @PostMapping(value = "/WebWolf/fileupload")
+    public ModelAndView importFile(@RequestParam("file") MultipartFile myFile) throws IOException {
+        WebGoatUser user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        File destinationDir = new File(fileLocation, user.getUsername());
+        destinationDir.mkdirs();
+        File directory = new File(fileLocation);
+        if(FileUtils.directoryContains(directory, myFile.getResource().getFile())) {
+            myFile.transferTo(new File(destinationDir, myFile.getOriginalFilename()));
+            log.debug("File saved to {}", new File(destinationDir, myFile.getOriginalFilename()));
+            Files.createFile(new File(destinationDir, user.getUsername() + "_changed").toPath());
 
-    /**
-     * Notice this parse method is not a "trick" to get the XXE working, we need to catch some of the exception which
-     * might happen during when users post message (we want to give feedback track progress etc). In real life the
-     * XmlMapper bean defined above will be used automatically and the Comment class can be directly used in the
-     * controller method (instead of a String)
-     */
-    protected Comment parseXml(String xml) throws JAXBException, XMLStreamException {
-        var jc = JAXBContext.newInstance(Comment.class);
-        var xif = XMLInputFactory.newInstance();
-        xif.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
-        xif.setProperty(XMLInputFactory.SUPPORT_DTD, false);
-
-        if (webSession.isSecurityEnabled()) {
-        	xif.setProperty(XMLConstants.ACCESS_EXTERNAL_DTD, ""); // Compliant
-        	xif.setProperty(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");  // compliant
-        }
-        
-        var xsr = xif.createXMLStreamReader(new StringReader(xml));
-
-        var unmarshaller = jc.createUnmarshaller();
-        return (Comment) unmarshaller.unmarshal(xsr);
-    }
-
-    protected Optional<Comment> parseJson(String comment) {
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            return of(mapper.readValue(comment, Comment.class));
-        } catch (IOException e) {
-            return empty();
+            ModelMap model = new ModelMap();
+            model.addAttribute("uploadSuccess", "File uploaded successful");
+            return new ModelAndView(
+                    new RedirectView("files", true),
+                    model
+            );
+        }else{
+            return null;
         }
     }
 
-    public void addComment(Comment comment, boolean visibleForAllUsers) {
-        comment.setDateTime(DateTime.now().toString(fmt));
-        comment.setUser(webSession.getUserName());
-        if (visibleForAllUsers) {
-            comments.add(comment);
-        } else {
-            List<Comment> comments = userComments.getOrDefault(webSession.getUserName(), new ArrayList<>());
-            comments.add(comment);
-            userComments.put(webSession.getUserName(), comments);
+    @AllArgsConstructor
+    @Getter
+    private class UploadedFile {
+        private final String name;
+        private final String size;
+        private final String link;
+    }
+
+    @GetMapping(value = "/WebWolf/files")
+    public ModelAndView getFiles(HttpServletRequest request) {
+        WebGoatUser user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String username = user.getUsername();
+        File destinationDir = new File(fileLocation, username);
+
+        ModelAndView modelAndView = new ModelAndView();
+        modelAndView.setViewName("files");
+        File changeIndicatorFile = new File(destinationDir, user.getUsername() + "_changed");
+        if (changeIndicatorFile.exists()) {
+            modelAndView.addObject("uploadSuccess", request.getParameter("uploadSuccess"));
         }
+        changeIndicatorFile.delete();
+
+        var uploadedFiles = new ArrayList<>();
+        File[] files = destinationDir.listFiles(File::isFile);
+        if (files != null) {
+            for (File file : files) {
+                String size = FileUtils.byteCountToDisplaySize(file.length());
+                String link = String.format("files/%s/%s", username, file.getName());
+                uploadedFiles.add(new UploadedFile(file.getName(), size, link));
+            }
+        }
+
+        modelAndView.addObject("files", uploadedFiles);
+        modelAndView.addObject("webwolf_url", "http://" + server + ":" + port);
+        return modelAndView;
     }
 }
