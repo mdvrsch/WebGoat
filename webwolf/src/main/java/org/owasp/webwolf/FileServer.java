@@ -70,10 +70,9 @@ public class FileServer {
         WebGoatUser user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         File destinationDir = new File(fileLocation, user.getUsername());
         destinationDir.mkdirs();
-        MultipartFile fileUnsafe = myFile;
         File directory = new File(fileLocation);
-        if(FileUtils.directoryContains(directory, fileUnsafe.getResource().getFile())) {
-            fileUnsafe.transferTo(new File(destinationDir, String.valueOf(fileUnsafe)));
+        if(FileUtils.directoryContains(directory, myFile.getResource().getFile())) {
+            myFile.transferTo(new File(destinationDir, myFile.getOriginalFilename()));
             log.debug("File saved to {}", new File(destinationDir, myFile.getOriginalFilename()));
             Files.createFile(new File(destinationDir, user.getUsername() + "_changed").toPath());
 
