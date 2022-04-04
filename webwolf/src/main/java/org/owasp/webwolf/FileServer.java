@@ -70,21 +70,16 @@ public class FileServer {
         WebGoatUser user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         File destinationDir = new File(fileLocation, user.getUsername());
         destinationDir.mkdirs();
-        File directory = new File(fileLocation);
-        if(FileUtils.directoryContains(directory, myFile.getResource().getFile())) {
-            myFile.transferTo(new File(destinationDir, myFile.getOriginalFilename()));
-            log.debug("File saved to {}", new File(destinationDir, myFile.getOriginalFilename()));
-            Files.createFile(new File(destinationDir, user.getUsername() + "_changed").toPath());
+        myFile.transferTo(new File(destinationDir, myFile.getOriginalFilename()));
+        log.debug("File saved to {}", new File(destinationDir, myFile.getOriginalFilename()));
+        Files.createFile(new File(destinationDir, user.getUsername() + "_changed").toPath());
 
-            ModelMap model = new ModelMap();
-            model.addAttribute("uploadSuccess", "File uploaded successful");
-            return new ModelAndView(
-                    new RedirectView("files", true),
-                    model
-            );
-        }else{
-            return null;
-        }
+        ModelMap model = new ModelMap();
+        model.addAttribute("uploadSuccess", "File uploaded successful");
+        return new ModelAndView(
+                new RedirectView("files", true),
+                model
+        );
     }
 
     @AllArgsConstructor
