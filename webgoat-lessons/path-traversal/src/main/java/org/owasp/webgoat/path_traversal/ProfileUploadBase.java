@@ -44,8 +44,12 @@ public class ProfileUploadBase extends AssignmentEndpoint {
             uploadDirectory.mkdirs();
             var uploadedFile = new File(uploadDirectory, fullName);
             uploadedFile.createNewFile();
-            FileCopyUtils.copy(file.getBytes(), uploadedFile);
 
+            /*Solución vulnerabilidad Path Traversal*/
+            File directory = new File("/tmp/");
+            if(FileUtils.directoryContains(directory, file)) {
+                FileCopyUtils.copy(file.getBytes(), uploadedFile);
+            }
             if (attemptWasMade(uploadDirectory, uploadedFile)) {
                 return solvedIt(uploadedFile);
             }
