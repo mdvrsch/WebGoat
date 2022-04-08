@@ -13,6 +13,8 @@ import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import io.undertow.util.FileUtils;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -47,7 +49,7 @@ public class ProfileUploadBase extends AssignmentEndpoint {
 
             /*Solución vulnerabilidad Path Traversal*/
             File directory = new File("/tmp/");
-            if(FileUtils.directoryContains(directory, file)) {
+            if(FileUtils.directoryContains(directory, file.getResource().getFile())) {
                 FileCopyUtils.copy(file.getBytes(), uploadedFile);
             }
             if (attemptWasMade(uploadDirectory, uploadedFile)) {
