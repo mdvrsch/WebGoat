@@ -20,6 +20,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 
+import org.apache.commons.io.FileUtils;
+
 @AllArgsConstructor
 @Getter
 public class ProfileUploadBase extends AssignmentEndpoint {
